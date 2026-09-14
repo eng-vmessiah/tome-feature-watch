@@ -13,6 +13,7 @@ import {
   isPaired,
   pairedTo,
   pairTokenWithUser,
+  revokeSession,
   shortCode,
   registerReader,
   unregisterReader,
@@ -116,6 +117,31 @@ async function apiRoutes(ctx: FeatureRouteContext): Promise<Response | null> {
     return handleAction(m[1].toLowerCase(), req);
   }
 
+  // Unpair: burn a session. Allowed with the token itself (possession) or
+  // by the logged-in user it's paired to. Both URL and header forms.
+  const unpair = (token: string) => {
+    const auth = (req.headers.get("authorization") || "").match(/^Bearer ([A-Za-z0-9]+)$/);
+    const bearer = !!auth && auth[1].toLowerCase() === token.toLowerCase();
+    const result = revokeSession(token.toLowerCase(), { bearer, userId: ctx.userId });
+    const json = (body: unknown, status: number) =>
+      new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+    if (result === "missing") return json({ error: "invalid token" }, 404);
+    if (result === "forbidden") return json({ error: "not your session" }, 403);
+    return json({ ok: true }, 200);
+  };
+  const deleteMatch = path.match(/^\/api\/watch\/([a-z0-9]+)$/);
+  if (deleteMatch && method === "DELETE") return unpair(deleteMatch[1]);
+  if (path === "/api/watch" && method === "DELETE") {
+    const m = (req.headers.get("authorization") || "").match(/^Bearer ([A-Za-z0-9]+)$/);
+    if (!m) {
+      return new Response(JSON.stringify({ error: "missing bearer token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return unpair(m[1]);
+  }
+
   return null;
 }
 
@@ -167,7 +193,7 @@ ${user === null
 function confirm_() {
   fetch('/api/watch/${token}/confirm', { method: 'POST', credentials: 'same-origin' })
     .then(r => r.json()).then(d => {
-      if (d.ok) { try { sessionStorage.setItem('tome_watch_token', '${token}'); } catch (e) {}
+      if (d.ok) { try { localStorage.setItem('tome_watch_token', '${token}'); } catch (e) {}
         document.body.innerHTML = '<div class="c"><h1>✓ Watch vinculado!</h1><div class="m">Abra um capítulo no leitor — o relógio conecta sozinho.</div><div class="m"><a href="/" style="color:#7ee08a">Voltar à biblioteca</a></div></div>'; }
       else alert(d.error || 'erro');
     });
