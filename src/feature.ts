@@ -13,6 +13,7 @@ import {
   isPaired,
   pairedTo,
   pairTokenWithUser,
+  revokeSession,
   shortCode,
   registerReader,
   unregisterReader,
@@ -23,6 +24,33 @@ import {
 // ---------------------------------------------------------------
 // API routes
 // ---------------------------------------------------------------
+/** Shared action dispatch for the path-token and Bearer-header forms. */
+async function handleAction(token: string, req: Request): Promise<Response> {
+  const json = (body: unknown, status: number) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    });
+  if (!isValidToken(token)) return json({ error: "invalid token" }, 404);
+  let action: string | undefined;
+  try {
+    const body = (await req.json()) as { action?: string };
+    action = body.action;
+  } catch {
+    // fallthrough — missing body handled below
+  }
+  if (!action) return json({ error: "missing action" }, 400);
+  const status = dispatchAction(token, action);
+  if (status === 404) return json({ error: "invalid token" }, 404);
+  if (status === 400) {
+    return json(
+      { error: "invalid action (next|prev|scroll-down|scroll-up)" },
+      400
+    );
+  }
+  return json({ ok: true, action }, 200);
+}
+
 async function apiRoutes(ctx: FeatureRouteContext): Promise<Response | null> {
   const { req, path } = ctx;
   const method = req.method;
@@ -72,44 +100,46 @@ async function apiRoutes(ctx: FeatureRouteContext): Promise<Response | null> {
 
   const actionMatch = path.match(/^\/api\/watch\/([a-z0-9]+)$/);
   if (actionMatch && method === "POST") {
-    const token = actionMatch[1];
-    if (!isValidToken(token)) {
-      return new Response(JSON.stringify({ error: "invalid token" }), {
-        status: 404,
+    return handleAction(actionMatch[1], req);
+  }
+
+  if (path === "/api/watch" && method === "POST") {
+    // Header-authed dispatch: same as above but the token travels in
+    // `Authorization: Bearer <token>` instead of the URL (stays out of
+    // access logs/history). Path form keeps working.
+    const m = (req.headers.get("authorization") || "").match(/^Bearer ([A-Za-z0-9]+)$/);
+    if (!m) {
+      return new Response(JSON.stringify({ error: "missing bearer token" }), {
+        status: 401,
         headers: { "Content-Type": "application/json" },
       });
     }
-    let action: string | undefined;
-    try {
-      const body = (await req.json()) as { action?: string };
-      action = body.action;
-    } catch {
-      // fallthrough — missing body handled below
-    }
-    if (!action) {
-      return new Response(JSON.stringify({ error: "missing action" }), {
-        status: 400,
+    return handleAction(m[1].toLowerCase(), req);
+  }
+
+  // Unpair: burn a session. Allowed with the token itself (possession) or
+  // by the logged-in user it's paired to. Both URL and header forms.
+  const unpair = (token: string) => {
+    const auth = (req.headers.get("authorization") || "").match(/^Bearer ([A-Za-z0-9]+)$/);
+    const bearer = !!auth && auth[1].toLowerCase() === token.toLowerCase();
+    const result = revokeSession(token.toLowerCase(), { bearer, userId: ctx.userId });
+    const json = (body: unknown, status: number) =>
+      new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+    if (result === "missing") return json({ error: "invalid token" }, 404);
+    if (result === "forbidden") return json({ error: "not your session" }, 403);
+    return json({ ok: true }, 200);
+  };
+  const deleteMatch = path.match(/^\/api\/watch\/([a-z0-9]+)$/);
+  if (deleteMatch && method === "DELETE") return unpair(deleteMatch[1]);
+  if (path === "/api/watch" && method === "DELETE") {
+    const m = (req.headers.get("authorization") || "").match(/^Bearer ([A-Za-z0-9]+)$/);
+    if (!m) {
+      return new Response(JSON.stringify({ error: "missing bearer token" }), {
+        status: 401,
         headers: { "Content-Type": "application/json" },
       });
     }
-    const status = dispatchAction(token, action);
-    if (status === 404) {
-      return new Response(JSON.stringify({ error: "invalid token" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    if (status === 400) {
-      return new Response(
-        JSON.stringify({
-          error: "invalid action (next|prev|scroll-down|scroll-up)",
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    return new Response(JSON.stringify({ ok: true, action }), {
-      headers: { "Content-Type": "application/json" },
-    });
+    return unpair(m[1]);
   }
 
   return null;
@@ -163,7 +193,8 @@ ${user === null
 function confirm_() {
   fetch('/api/watch/${token}/confirm', { method: 'POST', credentials: 'same-origin' })
     .then(r => r.json()).then(d => {
-      if (d.ok) { document.body.innerHTML = '<div class="c"><h1>✓ Watch vinculado!</h1><div class="m">Pode usar no relógio agora.</div></div>'; }
+      if (d.ok) { try { localStorage.setItem('tome_watch_token', '${token}'); } catch (e) {}
+        document.body.innerHTML = '<div class="c"><h1>✓ Watch vinculado!</h1><div class="m">Abra um capítulo no leitor — o relógio conecta sozinho.</div><div class="m"><a href="/" style="color:#7ee08a">Voltar à biblioteca</a></div></div>'; }
       else alert(d.error || 'erro');
     });
 }
@@ -243,6 +274,17 @@ const watchWsPath = {
     }
     // Controllers bridge HTTP POSTs -> WS for standalone testing; in practice
     // the watch companion uses POST /api/watch/:token directly.
+  },
+  message(_ws: any, msg: unknown, params: unknown): void {
+    // Relays /watch/:token fallback-page buttons (they send over WS).
+    // Only controller sockets may inject actions.
+    const p = params as { token: string; role: string };
+    if (p.role !== "controller") return;
+    const text = typeof msg === "string" ? msg : "";
+    try {
+      const data = JSON.parse(text) as { action?: unknown };
+      if (typeof data.action === "string") dispatchAction(p.token, data.action);
+    } catch {}
   },
   close(ws: any): void {
     if (ws.data?.role === "reader") unregisterReader(ws);

@@ -17,5 +17,8 @@
  */
 import type { Feature } from "tome";
 import { watchFeature } from "./feature";
+import { migrateWatch } from "./migrations";
 
-export { watchFeature as feature };
+const feature: Feature = { ...watchFeature, migrations: migrateWatch };
+
+export { feature };

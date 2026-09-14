@@ -14,8 +14,10 @@ echo 'TOME_PLUGINS=tome-feature-watch' >> .env
 
 | Method | Path | Body |
 |---|---|---|
-| POST | `/api/watch/create` | — → `{token}` |
+| POST | `/api/watch/create` | — → `{token}` (GET also works, for the watch app) |
+| POST | `/api/watch` | `{action}` + `Authorization: Bearer <token>` (token out of URLs/logs) |
 | POST | `/api/watch/:token` | `{action}` where action ∈ `next \| prev \| scroll-down \| scroll-up` |
+| GET  | `/watch/pair/:token` | pair confirm page — phone scans the watch QR pointing here |
 | GET  | `/watch/:token` | controller fallback page (phone browser) |
 | WS   | `/ws/watch/:token?role=reader` | receives `{action}` broadcasts |
 
