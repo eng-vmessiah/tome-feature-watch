@@ -10,6 +10,10 @@ import {
   createWatchSession,
   dispatchAction,
   isValidToken,
+  isPaired,
+  pairedTo,
+  pairTokenWithUser,
+  shortCode,
   registerReader,
   unregisterReader,
   type WatchRole,
@@ -27,6 +31,42 @@ async function apiRoutes(ctx: FeatureRouteContext): Promise<Response | null> {
     const token = createWatchSession();
     return new Response(JSON.stringify({ token }), {
       headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (path === "/api/watch/create" && method === "GET") {
+    // convenient: watch app can GET too
+    const token = createWatchSession();
+    return new Response(JSON.stringify({ token }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const statusMatch = path.match(/^\/api\/watch\/([a-z0-9]+)\/status$/);
+  if (statusMatch && method === "GET") {
+    const token = statusMatch[1];
+    return new Response(
+      JSON.stringify({ paired: isPaired(token) ? pairedTo(token) : null, short: shortCode(token) ?? null }),
+      { status: isValidToken(token) ? 200 : 404, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const confirmMatch = path.match(/^\/api\/watch\/([a-z0-9]+)\/confirm$/);
+  if (confirmMatch && method === "POST") {
+    const token = confirmMatch[1];
+    if (!isValidToken(token)) {
+      return new Response(JSON.stringify({ error: "invalid token" }), {
+        status: 404, headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (ctx.userId === "anonymous") {
+      return new Response(JSON.stringify({ error: "login required to pair" }), {
+        status: 401, headers: { "Content-Type": "application/json" },
+      });
+    }
+    const ok = pairTokenWithUser(token, ctx.userId);
+    return new Response(JSON.stringify({ ok, user: ctx.userId }), {
+      status: ok ? 200 : 400, headers: { "Content-Type": "application/json" },
     });
   }
 
@@ -103,8 +143,46 @@ connect();
 </script></body></html>`;
 }
 
+function pairPage(token: string, short: string, user: string | null): string {
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pair Watch</title>
+<style>body{font-family:system-ui;background:#111;color:#eee;display:grid;place-items:center;min-height:100vh;margin:0}
+.c{text-align:center;padding:2rem}.c h1{font-size:1.3rem;color:#c9b86e}
+.b{font-size:2.6rem;letter-spacing:.2em;margin:1rem 0;font-weight:700;color:#eee}
+button{font-size:1.15rem;padding:.9rem 2rem;border:0;border-radius:14px;background:#1c4021;color:#7ee08a;font-weight:700}
+.m{color:#888;font-size:.9rem}</style></head>
+<body><div class="c">
+<h1>⚠ Vincular este Galaxy Watch?</h1>
+<div class="b">${short}</div>
+<div class="m">Confirme o código para o seu server</div>
+${user === null
+  ? `<div class="m">⛔ Não logado — faça login no Tome e escaneie novamente.</div>`
+  : `<button onclick="confirm_()">✓ Vincular com ${user}</button>`}
+<script>
+function confirm_() {
+  fetch('/api/watch/${token}/confirm', { method: 'POST', credentials: 'same-origin' })
+    .then(r => r.json()).then(d => {
+      if (d.ok) { document.body.innerHTML = '<div class="c"><h1>✓ Watch vinculado!</h1><div class="m">Pode usar no relógio agora.</div></div>'; }
+      else alert(d.error || 'erro');
+    });
+}
+</script></div></body></html>`;
+}
+
 async function pageRoutes(ctx: FeatureRouteContext): Promise<Response | null> {
   const { req, path } = ctx;
+
+  const pairMatch = path.match(/^\/watch\/pair\/([a-z0-9]+)$/);
+  if (pairMatch && req.method === "GET") {
+    const token = pairMatch[1];
+    if (!isValidToken(token)) return null; // fall-through 404
+    const sc = shortCode(token) ?? "——-——";
+    return new Response(pairPage(token, sc, ctx.userId === "anonymous" ? null : ctx.userId), {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  }
+
   const match = path.match(/^\/watch\/([a-z0-9]+)$/);
   if (match && req.method === "GET") {
     const token = match[1];

@@ -16,6 +16,8 @@ type WatchSession = {
   token: string;
   createdAt: number;
   readers: Set<ServerWebSocket<WatchWsData>>;
+  pairedTo: string | null; // userId after web confirm
+  shortCode: string;       // 6-char display code for the watch screen
 };
 
 const tokenToSession = new Map<string, WatchSession>();
@@ -32,6 +34,39 @@ function generateToken(): string {
   return token;
 }
 
+function genShort(): string {
+  const digits = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+  let out = "";
+  for (let i = 0; i < 6; i++) out += digits[Math.floor(Math.random() * digits.length)];
+  return out.slice(0, 3) + "-" + out.slice(3);
+}
+
+export function shortCode(token: string): string | null {
+  return tokenToSession.get(token)?.shortCode ?? null;
+}
+
+export function pairTokenWithUser(token: string, userId: string): boolean {
+  const s = tokenToSession.get(token);
+  if (!s) return false;
+  if (s.pairedTo) return true; // idempotent
+  s.pairedTo = userId;
+  const code = s.shortCode;
+  // notify waiting readers by sending {paired:"<user>"}: add to VALID_ACTIONS? simpler: dedicated flag
+  const json = JSON.stringify({ paired: s.pairedTo });
+  for (const ws of s.readers) {
+    try { ws.send(json); } catch {}
+  }
+  return true;
+}
+
+export function isPaired(token: string): boolean {
+  return !!tokenToSession.get(token)?.pairedTo;
+}
+
+export function pairedTo(token: string): string | null {
+  return tokenToSession.get(token)?.pairedTo ?? null;
+}
+
 export function createWatchSession(): string {
   pruneExpired();
   const token = generateToken();
@@ -39,6 +74,8 @@ export function createWatchSession(): string {
     token,
     createdAt: Date.now(),
     readers: new Set(),
+    pairedTo: null,
+    shortCode: genShort(),
   });
   return token;
 }
