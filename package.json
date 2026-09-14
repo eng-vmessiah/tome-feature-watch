@@ -1,14 +1,20 @@
 {
   "name": "tome-feature-watch",
   "version": "0.1.0",
-  "description": "Tome feature plugin — Galaxy Watch wrist-gesture remote (flick next/prev + scroll actions over its own WebSocket), no core changes.",
+  "description": "Tome feature plugin \u2014 Galaxy Watch wrist-gesture remote (flick next/prev + scroll actions over its own WebSocket), no core changes.",
   "author": "vitor",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/vitor/tome-feature-watch"
   },
-  "keywords": ["tome", "feature", "watch", "wearos", "e-ink"],
+  "keywords": [
+    "tome",
+    "feature",
+    "watch",
+    "wearos",
+    "e-ink"
+  ],
   "type": "module",
   "main": "src/index.ts",
   "exports": {
@@ -22,7 +28,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "tome": "github:nmessias/tome"
+    "tome": "github:nmessias/tome#810ca18a985e57bdf4ca35cab3314dde9706c303"
   },
   "devDependencies": {
     "@types/bun": "latest",
