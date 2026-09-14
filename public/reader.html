@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Tome Watch — Reader Local</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior: auto; }
+  body {
+    font-family: Georgia, serif;
+    background:#111; color:#e8e2d5;
+    line-height:1.7; font-size:19px;
+  }
+  #wsBadge {
+    position:fixed; top:8px; right:10px; z-index:10;
+    font:12px/1 sans-serif; padding:5px 9px; border-radius:12px;
+    background:#333; color:#aaa;
+  }
+  #wsBadge.on { background:#1c4021; color:#7ee08a; }
+  #wsBadge.off { background:#401c1c; color:#e07e7e; }
+  #hud {
+    position:fixed; top:8px; left:10px; z-index:10;
+    font:13px/1 monospace; color:#6fa8dc;
+    background:rgba(0,0,0,.55); padding:6px 9px; border-radius:10px;
+  }
+  .chapter { display:none; padding:2.2rem 1.4rem 40vh; }
+  .chapter.active { display:block; }
+  h2 { font:600 1.25rem/1.3 system-ui; color:#c9b86e; margin:.2rem 0 1.1rem; }
+  .meta { font:.8rem system-ui; color:#777; margin-bottom:1.4rem; }
+  p { margin-bottom:1.05em; text-indent:1.4em; }
+  p:first-of-type { text-indent:0; }
+  .flicks-note {
+    margin-top:2.5rem; font:.85rem system-ui; color:#888;
+    border-top:1px solid #333; padding-top:1rem;
+  }
+</style>
+</head>
+<body>
+
+<div id="wsBadge" class="off">WS offline</div>
+<div id='hud'>—</div>
+<div style='position:fixed;bottom:6px;right:10px;color:#666;font:11px sans-serif'>v7</div>
+
+<!-- capítulos de teste (será substituído pelo conteúdo real do Tome) -->
+<div style="background:#5e2a2a;color:#ffd6d6;font:600 14px system-ui;padding:8px 12px">READER v8 — se você lê isto, o cache morreu ✓</div>
+<article class="chapter" data-idx="0">
+  <h2>Capítulo 1 — O Flick de Abertura</h2>
+  <div class="meta">tome-watch reader v0.1 · teste local</div>
+  <p>Este é um capítulo de teste longo o suficiente pra sentir os scrolls. Fique confortável: pega o celular, apoia no peito ou na barriga, e operação fica no pulso.</p>
+  <p>Todos os movimentos que você fizer com o punho vêm aqui como mensagens do WebSocket, para que a página responda na hora — sem tocar na tela.</p>
+  <p>Um flick pra baixo roda a página devagar. Dois flicks rápidos pra baixo chamam o próximo capítulo — a mesma dinâmica de virar página, só que sem o dedo.</p>
+  <p>Teste: 1 flick pra baixo agora. Depois de ter devorado o texto, dois flicks seguidos pra baixo pra pular direto pro próximo capítulo.</p>
+  <p>O girar do pulso hormonal excitado — não esperamos calibrar tudo num dia. O que importa é que o corpo aprende o gesto em dois dias, como se já soubesse.</p>
+  <p>Continue: mais um bloco para você ter algo para rolar. A ação vai ficar cada vez mais natural — na verdade o cérebro compra tão rápido que amanhã você já não perceberá que está fazendo movimentos de pulso.</p>
+  <p>A leitura longa em posições relaxadas é o caso de uso perfeito para smartwatch como controle: seu pulso está mesmo segurando alguma coisa, e agora essa coisa controla a página.</p>
+  <p>Baixo baixo baixo baixo baixo baixo baixo baixo. Muitos textos têm parágrafos em sequência. Alguns tem diálogos. Alguns tem descrições longas demais pra tudo. O flick resolve todos esses casos com o mesmo caminho.</p>
+  <p>Ok, agora você é oficialmente um leitor gestual. Faça dois flicks pra baixo e venhaCapítulo 2.</p>
+  <div class="flicks-note">↑ 1x=scroll ↑ · 2x↑=capítulo anterior</div>
+</article>
+
+<article class="chapter" data-idx="1">
+  <h2>Capítulo 2 — A Calibragem da Mão</h2>
+  <div class="meta">tome-watch reader v0.1 · teste local</div>
+  <p>Se você chegou aqui, o double-flick funcionou. Isto significa: o sistema inteiro está vivo — relógio, detector de gestos, servidor HTTP, WebSocket e este leitor.</p>
+  <p>Agora teste o inverso: dois flicks pra cima (2x↑) para voltar ao capítulo anterior. Depois retorne e siga em frente.</p>
+  <p>O scroll deve ter pego ~70% da tela por flick — o suficiente para ler sem perder o fio do texto, mas o bastante para o gesto "mover o texto de verdade" e não parecer perturbação.</p>
+  <p>Se quiser, jogue também com o scroll-up: um flick pra cima traz o texto de volta um degrau, para conferir aquela frase que você passou correndo.</p>
+  <p>Na integração real com o Tome, este capítulo seria substituído pelo capítulo genuinamente raspado (Royal Road, FreeWebNovel, etc.), e o próximo/virar-página navegaria entre capítulos reais.</p>
+  <p>O código é ES5 e simples: WebSocket binário leve, JSON.parse, todo o resto é scrollBy. Nada de framework no reader.</p>
+  <p>Experimente: solte o celular na cama, mãos livres, e só CTRL o texto com o pulso. É assim que vai usar no dia a dia.</p>
+  <div class="flicks-note">↑ 1x=scroll ↑ · 2x↑=capítulo anterior · 2x↓=próximo</div>
+</article>
+
+<article class="chapter" data-idx="2">
+  <h2>Capítulo 3 — Fim do Teste</h2>
+  <div class="meta">tome-watch reader v0.1 · último capítulo</div>
+  <p>Você chegou ao último capítulo. Se os três capítulos funcionaram (scroll, next, prev), o ciclo fechou: pulso → relógio → HTTP POST → plugin → WS broadcast → este leitor.</p>
+  <p>Flicks teu aí de cima. A partir daqui, o crescimento seria: server real do Nicolas, integração com o reader do Tome e a tela de configuração no relógio.</p>
+  <div class="flicks-note">fim — 2x↑ para voltar</div>
+</article>
+
+<script>
+// ============ CONFIG ============
+var TOKEN = "13aphbn04oxsot2o";
+var WS_CANDIDATES = [
+  "ws://localhost:3997/ws/watch/" + TOKEN + "?role=reader",        // via adb reverse (USB/network adb)
+  "ws://" + location.hostname + ":3997/ws/watch/" + TOKEN + "?role=reader" // direct LAN
+];
+var WS_PATH = WS_CANDIDATES[0];
+var SCROLL_STEP = Math.round(window.innerHeight * 0.75);
+
+// ============ CHAPTER NAV ============
+var chapters = document.querySelectorAll(".chapter");
+var current = 0;
+function show(i) {
+  if (i < 0 || i >= chapters.length) return;
+  chapters[current].classList.remove("active");
+  current = i;
+  chapters[current].classList.add("active");
+  window.scrollTo(0, 0);
+  hudMsg("capítulo " + (i+1) + "/" + chapters.length);
+}
+function nextChapter() { show(current + 1); }
+function prevChapter() { show(current - 1); }
+
+// ============ HUD ============
+var hudEl = document.getElementById("hud");
+function hudMsg(m) { hudEl.textContent = m; }
+
+// ============ WS ============
+var ws, wsRetry = 0;
+function connect() {
+  try { ws = new WebSocket(WS_PATH); } catch(e) { setTimeout(connect, 3000); return; }
+  ws.onopen = function() {
+    wsRetry = 0;
+    badge("on", "WS ok " + WS_PATH.replace("ws://","").split("/")[0]);
+    hudMsg("aguardando flick…");
+  };
+  ws.onmessage = function(e) {
+    var d; try { d = JSON.parse(e.data); } catch(_) { return; }
+    if (!d.action) return;
+    hudMsg(d.action);
+    switch (d.action) {
+      case "scroll-down": window.scrollBy({ top: window.innerHeight*0.72, behavior:"smooth" }); break;
+      case "scroll-up":   window.scrollBy({ top:-window.innerHeight*0.72, behavior:"smooth" }); break;
+      case "next": nextChapter(); break;
+      case "prev": prevChapter(); break;
+    }
+  };
+  ws.onclose = function() {
+    badge("off", "WS offline");
+    hudMsg("reconectando…");
+    if (++wsRetry % 3 === 0 && wsRetry < 9) {
+      // rotate candidates (localhost reverse vs LAN)
+      var idx = Math.floor(wsRetry / 3) % WS_CANDIDATES.length;
+      WS_PATH = WS_CANDIDATES[idx];
+    }
+    setTimeout(connect, 1200 + Math.min(++wsRetry, 5)*800);
+  };
+  ws.onerror = function(e) {
+    badge("off", "ERRO " + WS_PATH.replace("ws://","").slice(0,20));
+  };
+}
+function badge(cls, text) {
+  var b = document.getElementById("wsBadge");
+  b.className = cls; b.textContent = text;
+}
+
+// init
+show(0);
+connect();
+</script>
+</body>
+</html>
