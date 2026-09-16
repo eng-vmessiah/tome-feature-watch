@@ -33,14 +33,16 @@ async function handleAction(token: string, req: Request): Promise<Response> {
     });
   if (!isValidToken(token)) return json({ error: "invalid token" }, 404);
   let action: string | undefined;
+  let px: number | undefined;
   try {
-    const body = (await req.json()) as { action?: string };
+    const body = (await req.json()) as { action?: string; px?: number };
     action = body.action;
+    if (typeof body.px === "number") px = body.px;
   } catch {
     // fallthrough — missing body handled below
   }
   if (!action) return json({ error: "missing action" }, 400);
-  const result = dispatchAction(token, action);
+  const result = dispatchAction(token, action, px);
   if (result.status === 404) return json({ error: "invalid token" }, 404);
   if (result.status === 400) {
     return json(
@@ -295,7 +297,12 @@ const watchWsPath = {
     const text = typeof msg === "string" ? msg : "";
     try {
       const data = JSON.parse(text) as { action?: unknown };
-      if (typeof data.action === "string") dispatchAction(p.token, data.action);
+      if (typeof data.action === "string") {
+        const px = typeof (data as { px?: unknown }).px === "number"
+          ? ((data as { px?: number }).px as number)
+          : undefined;
+        dispatchAction(p.token, data.action, px);
+      }
     } catch {}
   },
   close(ws: any): void {

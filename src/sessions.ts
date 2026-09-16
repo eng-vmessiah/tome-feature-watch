@@ -195,16 +195,36 @@ export function unregisterReader(ws: ServerWebSocket<WatchWsData>): void {
   if (set) set.delete(ws);
 }
 
-const VALID_ACTIONS = new Set(["next", "prev", "scroll-down", "scroll-up"]);
+const VALID_ACTIONS = new Set([
+  "next",
+  "prev",
+  "scroll-down",
+  "scroll-up",
+  "autoscroll", // toggle: continuous reading scroll (reader stops at chapter end)
+  "scroll-by", // fine-grained: { px } offset (+down / -up), for bezel/drag input
+]);
 
 /** HTTP status + how many live reader sockets the action was broadcast to. */
 export type DispatchResult = { status: number; readers: number };
 
-export function dispatchAction(token: string, action: string): DispatchResult {
+export function dispatchAction(
+  token: string,
+  action: string,
+  px?: number
+): DispatchResult {
   if (!getRow(token)) return { status: 404, readers: 0 };
   if (!VALID_ACTIONS.has(action)) return { status: 400, readers: 0 };
+  if (action === "scroll-by") {
+    if (typeof px !== "number" || !Number.isFinite(px) || px === 0) {
+      return { status: 400, readers: 0 };
+    }
+    px = Math.max(-2000, Math.min(2000, Math.round(px)));
+  }
   touch(token);
-  const json = JSON.stringify({ action });
+  const json =
+    action === "scroll-by"
+      ? JSON.stringify({ action, px })
+      : JSON.stringify({ action });
   const set = readers.get(token);
   let delivered = 0;
   if (set) {
