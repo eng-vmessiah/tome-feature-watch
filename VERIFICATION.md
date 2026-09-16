@@ -37,3 +37,34 @@ RESULT: ALL PASS
 - Real deployment on Nicolas' server (needs his authorization) — NOT READY
 - Real watch device (Part B pending)
 - Reader-side JS integration with core remote sessions (independent token maps — documented; coexistence design pending Nicolas' input on whether core should expose broadcast hooks)
+
+
+---
+
+# Update (2026-09-15) — `readers:N` + ws.data leak fix
+
+## Feature: POST response now reports live reader count
+`POST /api/watch/:token` → `{ok:true, action, readers:N}` where N = reader sockets
+the action was broadcast to (0 = no phone has the reader open). Companion shows
+"⚠ sem celular" instead of a silent no-op. Backward compatible (old clients ignore it).
+
+## Bug found while testing (would have inflated `readers`)
+**`ws.data` clobbering → reader sockets never unregistered.** The app shell routes
+every WS event (open/message/**close**) via `ws.data.featureIndex` / `ws.data.pathIndex`,
+read LIVE at event time (`src/index.ts` → `wsPathFor()`). Our `open()` replaced
+`ws.data` wholesale with `{token, role, connectedAt}` — dropping those fields — so
+`close` could never be routed back and closed readers leaked in the `readers` Set
+forever. Fix: merge (`Object.assign({}, ws.data, {...})`). Regression-covered below.
+
+## Evidence (fresh run, local core @ ~/project/tome-upstream, port 3997)
+```
+token: xhgcz79m2r5o6qdd
+no reader   -> {status:200, ok:true, action:scroll-down, readers:0}   PASS
+1 reader    -> {status:200, ok:true, action:next,        readers:1}   PASS
+broadcast   -> {"action":"scroll-up"}                                  PASS
+closed      -> {status:200, ok:true, action:prev,        readers:0}   PASS  <- leak fix
+bad action  -> {status:400}                                            PASS
+bad token   -> {status:404}                                            PASS
+ALL PASS
+```
+Test script: `~/project/tome-watch-dev/test-readers.mjs`

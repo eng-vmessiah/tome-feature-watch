@@ -40,15 +40,17 @@ async function handleAction(token: string, req: Request): Promise<Response> {
     // fallthrough — missing body handled below
   }
   if (!action) return json({ error: "missing action" }, 400);
-  const status = dispatchAction(token, action);
-  if (status === 404) return json({ error: "invalid token" }, 404);
-  if (status === 400) {
+  const result = dispatchAction(token, action);
+  if (result.status === 404) return json({ error: "invalid token" }, 404);
+  if (result.status === 400) {
     return json(
       { error: "invalid action (next|prev|scroll-down|scroll-up)" },
       400
     );
   }
-  return json({ ok: true, action }, 200);
+  // readers: live reader sockets the action reached. 0 means no phone has the
+  // reader open right now — the watch companion shows a "sem celular" hint.
+  return json({ ok: true, action, readers: result.readers }, 200);
 }
 
 async function apiRoutes(ctx: FeatureRouteContext): Promise<Response | null> {
@@ -269,7 +271,16 @@ const watchWsPath = {
   open(ws: any, params: unknown): void {
     const p = params as { token: string; role: string };
     if (p.role === "reader") {
-      ws.data = { token: p.token, role: "reader", connectedAt: Date.now() };
+      // MERGE into ws.data — never replace it. The app shell routes every
+      // event (including close) via ws.data.featureIndex/pathIndex set at
+      // upgrade time; replacing it orphans the socket: close never reaches
+      // this feature and the reader stays registered forever (inflated
+      // counts, dead sockets receiving broadcasts).
+      ws.data = Object.assign({}, ws.data, {
+        token: p.token,
+        role: "reader",
+        connectedAt: Date.now(),
+      });
       if (!registerReader(ws, p.token)) ws.close(1008, "Invalid session");
     }
     // Controllers bridge HTTP POSTs -> WS for standalone testing; in practice

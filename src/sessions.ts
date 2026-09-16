@@ -197,17 +197,25 @@ export function unregisterReader(ws: ServerWebSocket<WatchWsData>): void {
 
 const VALID_ACTIONS = new Set(["next", "prev", "scroll-down", "scroll-up"]);
 
-export function dispatchAction(token: string, action: string): number {
-  if (!getRow(token)) return 404;
-  if (!VALID_ACTIONS.has(action)) return 400;
+/** HTTP status + how many live reader sockets the action was broadcast to. */
+export type DispatchResult = { status: number; readers: number };
+
+export function dispatchAction(token: string, action: string): DispatchResult {
+  if (!getRow(token)) return { status: 404, readers: 0 };
+  if (!VALID_ACTIONS.has(action)) return { status: 400, readers: 0 };
   touch(token);
   const json = JSON.stringify({ action });
-  for (const ws of readers.get(token) ?? []) {
-    try {
-      ws.send(json);
-    } catch {}
+  const set = readers.get(token);
+  let delivered = 0;
+  if (set) {
+    delivered = set.size;
+    for (const ws of set) {
+      try {
+        ws.send(json);
+      } catch {}
+    }
   }
-  return 200;
+  return { status: 200, readers: delivered };
 }
 
 function pruneExpired(): void {

@@ -16,12 +16,13 @@ echo 'TOME_PLUGINS=tome-feature-watch' >> .env
 |---|---|---|
 | POST | `/api/watch/create` | — → `{token}` (GET also works, for the watch app) |
 | POST | `/api/watch` | `{action}` + `Authorization: Bearer <token>` (token out of URLs/logs) |
-| POST | `/api/watch/:token` | `{action}` where action ∈ `next \| prev \| scroll-down \| scroll-up` |
+| POST | `/api/watch/:token` | `{action}` where action ∈ `next \| prev \| scroll-down \| scroll-up` → `{ok, action, readers:N}` |
+| DELETE | `/api/watch/:token` | unpair — revokes the token + closes its sockets |
 | GET  | `/watch/pair/:token` | pair confirm page — phone scans the watch QR pointing here |
 | GET  | `/watch/:token` | controller fallback page (phone browser) |
 | WS   | `/ws/watch/:token?role=reader` | receives `{action}` broadcasts |
 
-Creates its own session map (in-memory, 6h TTL) — independent from core `remote` feature.
+Sessions persist in sqlite (pair-once across restarts; sliding 180-day idle expiry). Independent from the core `remote` feature. The POST response reports `readers`: how many live reader sockets the action reached — `0` means no phone has the reader open right now (the companion app shows a "sem celular" hint instead of a silent no-op).
 
 ## Companion app
 
