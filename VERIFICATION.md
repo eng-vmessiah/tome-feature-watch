@@ -46,7 +46,7 @@ RESULT: ALL PASS
 ## Feature: POST response now reports live reader count
 `POST /api/watch/:token` → `{ok:true, action, readers:N}` where N = reader sockets
 the action was broadcast to (0 = no phone has the reader open). Companion shows
-"⚠ sem celular" instead of a silent no-op. Backward compatible (old clients ignore it).
+"⚠ sem dispositivo" instead of a silent no-op. Backward compatible (old clients ignore it).
 
 ## Bug found while testing (would have inflated `readers`)
 **`ws.data` clobbering → reader sockets never unregistered.** The app shell routes

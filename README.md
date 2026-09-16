@@ -22,7 +22,7 @@ echo 'TOME_PLUGINS=tome-feature-watch' >> .env
 | GET  | `/watch/:token` | controller fallback page (phone browser) |
 | WS   | `/ws/watch/:token?role=reader` | receives `{action}` broadcasts |
 
-Sessions persist in sqlite (pair-once across restarts; sliding 180-day idle expiry). Independent from the core `remote` feature. The POST response reports `readers`: how many live reader sockets the action reached — `0` means no phone has the reader open right now (the companion app shows a "sem celular" hint instead of a silent no-op).
+Sessions persist in sqlite (pair-once across restarts; sliding 180-day idle expiry). Independent from the core `remote` feature. The POST response reports `readers`: how many live reader sockets the action reached — `0` means no device has the reader open right now (the companion app shows a "sem dispositivo" hint instead of a silent no-op; any device counts — phone, tablet, Kindle, PC).
 
 ## Companion app
 
