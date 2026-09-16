@@ -55,7 +55,15 @@ async function handleAction(token: string, req: Request): Promise<Response> {
   // readers: live reader sockets the action reached. 0 means no device has
   // the reader open right now — the companion shows a "sem dispositivo" hint
   // (the reader can be any device: phone, tablet, Kindle, PC).
-  return json({ ok: true, action, readers: result.readers }, 200);
+  return json(
+    {
+      ok: true,
+      action,
+      ...(typeof speed === "number" ? { speed } : {}),
+      readers: result.readers,
+    },
+    200
+  );
 }
 
 async function apiRoutes(ctx: FeatureRouteContext): Promise<Response | null> {

@@ -225,6 +225,7 @@ export function dispatchAction(
   const hasSpeed =
     action === "autoscroll" && typeof speed === "number" && Number.isFinite(speed);
   if (hasSpeed) speed = Math.max(0, Math.min(100, Math.round(speed as number)));
+  if (hasSpeed) console.log(`[watch] autoscroll speed=${speed}`);
   touch(token);
   const json =
     action === "scroll-by"
