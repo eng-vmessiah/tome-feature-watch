@@ -34,19 +34,21 @@ async function handleAction(token: string, req: Request): Promise<Response> {
   if (!isValidToken(token)) return json({ error: "invalid token" }, 404);
   let action: string | undefined;
   let px: number | undefined;
+  let speed: number | undefined;
   try {
-    const body = (await req.json()) as { action?: string; px?: number };
+    const body = (await req.json()) as { action?: string; px?: number; speed?: number };
     action = body.action;
     if (typeof body.px === "number") px = body.px;
+    if (typeof body.speed === "number") speed = body.speed;
   } catch {
     // fallthrough — missing body handled below
   }
   if (!action) return json({ error: "missing action" }, 400);
-  const result = dispatchAction(token, action, px);
+  const result = dispatchAction(token, action, px, speed);
   if (result.status === 404) return json({ error: "invalid token" }, 404);
   if (result.status === 400) {
     return json(
-      { error: "invalid action (next|prev|scroll-down|scroll-up)" },
+      { error: "invalid action (next|prev|scroll-down|scroll-up|autoscroll|scroll-by)" },
       400
     );
   }
@@ -301,7 +303,10 @@ const watchWsPath = {
         const px = typeof (data as { px?: unknown }).px === "number"
           ? ((data as { px?: number }).px as number)
           : undefined;
-        dispatchAction(p.token, data.action, px);
+        const speed = typeof (data as { speed?: unknown }).speed === "number"
+          ? ((data as { speed?: number }).speed as number)
+          : undefined;
+        dispatchAction(p.token, data.action, px, speed);
       }
     } catch {}
   },

@@ -210,7 +210,8 @@ export type DispatchResult = { status: number; readers: number };
 export function dispatchAction(
   token: string,
   action: string,
-  px?: number
+  px?: number,
+  speed?: number
 ): DispatchResult {
   if (!getRow(token)) return { status: 404, readers: 0 };
   if (!VALID_ACTIONS.has(action)) return { status: 400, readers: 0 };
@@ -220,11 +221,17 @@ export function dispatchAction(
     }
     px = Math.max(-2000, Math.min(2000, Math.round(px)));
   }
+  // autoscroll carries an optional pace: watch-side 0..100 (in %).
+  const hasSpeed =
+    action === "autoscroll" && typeof speed === "number" && Number.isFinite(speed);
+  if (hasSpeed) speed = Math.max(0, Math.min(100, Math.round(speed as number)));
   touch(token);
   const json =
     action === "scroll-by"
       ? JSON.stringify({ action, px })
-      : JSON.stringify({ action });
+      : hasSpeed
+        ? JSON.stringify({ action, speed })
+        : JSON.stringify({ action });
   const set = readers.get(token);
   let delivered = 0;
   if (set) {
